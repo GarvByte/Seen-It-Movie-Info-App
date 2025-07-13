@@ -46,6 +46,7 @@ class _TrendingPageState extends State<TrendingPage> {
                   ),
                   Expanded(
                     child: Container(
+                      
                       // margin: EdgeInsets.only(right: 10),
                       child: SearchButton(),
                     ),
