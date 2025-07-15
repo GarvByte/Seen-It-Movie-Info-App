@@ -22,7 +22,7 @@ void main() async {
   await Hive.openBox('hiveBox');
   // final box = await Hive.openBox('hiveBox');
   // await box.clear();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack);
   runApp(
     ChangeNotifierProvider(
       create: (_) => MovieProviderModel(),

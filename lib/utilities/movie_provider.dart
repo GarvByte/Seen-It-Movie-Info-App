@@ -5,9 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:hive_flutter/hive_flutter.dart';
 
 class MovieProviderModel extends ChangeNotifier {
-  final apiKey = "8640f2ca8cdabbe1b782b22430016f97";
-  final authToken =
-      "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI4NjQwZjJjYThjZGFiYmUxYjc4MmIyMjQzMDAxNmY5NyIsIm5iZiI6MTc1MTUzNjIyNC4xNjUsInN1YiI6IjY4NjY1MjYwM2FmMzA0YTM0MjMxZjk4MyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.0rcPNVHiKsTYuF1Npgk10SQEhTdmyNolb298EoKF8NY";
   final box = Hive.box('hiveBox');
   int selectedIndex = 0;
   TextEditingController mycontroller = TextEditingController();
@@ -20,10 +17,10 @@ class MovieProviderModel extends ChangeNotifier {
   };
 
   final List<String> urls = [
-    "https://api.themoviedb.org/3/movie/top_rated?page=1",
-    "https://api.themoviedb.org/3/movie/popular?page=1",
-    "https://api.themoviedb.org/3/movie/now_playing?page=1",
-    "https://api.themoviedb.org/3/movie/upcoming?page=1",
+    "https://movie-backend-server.onrender.com/api/top-rated?page=1",
+    "https://movie-backend-server.onrender.com/api/popular?page=1",
+    "https://movie-backend-server.onrender.com/api/now_playing?page=1",
+    "https://movie-backend-server.onrender.com/api/upcoming?page=1",
     // "https://api.themoviedb.org/3/trending/movie/day?language=en-US",
   ];
 
@@ -53,10 +50,16 @@ class MovieProviderModel extends ChangeNotifier {
     'poster_path': 'Laoding image',
     'id': 00000000,
     'watchProvider': null,
+    'type': '',
   };
 
   List searchedMovie = [];
+  List searchedTvShow = [];
+  String lastMovieQuery = '';
+  String lastTvShowQuery = '';
   List trending = [];
+  bool tvShowButton = false;
+  bool? tvShowFound;
   bool? movieFound;
   bool? inWatchlist;
 
@@ -68,10 +71,10 @@ class MovieProviderModel extends ChangeNotifier {
     for (var i = 0; i < categories.length; i++) {
       final response = await http.get(
         Uri.parse(urls[i]),
-        headers: {
-          'accept': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
+        // headers: {
+        //   'accept': 'application/json',
+        //   'Authorization': 'Bearer $authToken',
+        // },
       );
       final decoded = json.decode(response.body);
       data[categories[i]] = decoded;
@@ -111,6 +114,7 @@ class MovieProviderModel extends ChangeNotifier {
         onClickMovie['poster_path'] = item['poster_path'];
         onClickMovie['id'] = item['id'];
         convertGenre(item['genre_ids']);
+        onClickMovie['type'] = 'movie';
         getWatchprovider(onClickMovie['id']);
         // onClickMovie['genre_ids'] = (item['genre_ids']);
         seeDuplicacy();
@@ -127,9 +131,11 @@ class MovieProviderModel extends ChangeNotifier {
       bool alreadyExists = false;
       for (int i = 0; i < box.length; i++) {
         final item = box.getAt(i);
-        if (item['id'] == onClickMovie['id']) {
-          alreadyExists = true;
-          break;
+        if (item['type'] == onClickMovie['type']) {
+          if (item['id'] == onClickMovie['id']) {
+            alreadyExists = true;
+            break;
+          }
         }
       }
       if (!alreadyExists) {
@@ -141,11 +147,13 @@ class MovieProviderModel extends ChangeNotifier {
   void deleteFromWatchlist() {
     for (int i = 0; i < box.length; i++) {
       final item = box.getAt(i);
-      if (item['id'] == onClickMovie['id']) {
-        final key = box.keyAt(i);
-        print("Deleting movie '${item['title']}' with key: $key");
-        box.delete(key);
-        break;
+      if (item['type'] == onClickMovie['type']) {
+        if (item['id'] == onClickMovie['id']) {
+          final key = box.keyAt(i);
+          print("Deleting movie '${item['title']}' with key: $key");
+          box.delete(key);
+          break;
+        }
       }
     }
     inWatchlist = false;
@@ -155,9 +163,11 @@ class MovieProviderModel extends ChangeNotifier {
   void seeDuplicacy() {
     for (int i = 0; i < box.length; i++) {
       final item = box.getAt(i);
-      if (item['id'] == onClickMovie['id']) {
-        inWatchlist = true;
-        return;
+      if (item['type'] == onClickMovie['type']) {
+        if (item['id'] == onClickMovie['id']) {
+          inWatchlist = true;
+          return;
+        }
       }
     }
     inWatchlist = false;
@@ -169,34 +179,82 @@ class MovieProviderModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> searchMovie(name) async {
+  Future<void> searchMovie(String name) async {
+    if (name.trim() == lastMovieQuery.trim()) {
+      print("Skipping duplicate movie search for '$name'");
+      movieFound = true;
+      notifyListeners();
+      return;
+    }
+
+    movieFound = null; // Show loading spinner
+    notifyListeners();
+
     final String searchUrl =
-        "https://api.themoviedb.org/3/search/movie?query=$name&include_adult=false&language=en-US&page=1";
-    final response = await http.get(
-      Uri.parse(searchUrl),
-      headers: {
-        'accept': 'application/json',
-        'Authorization': 'Bearer $authToken',
-      },
-    );
-    if (response.statusCode != 200) {
-      print("We are having some problem getting your result");
-    }
-    if (response.statusCode == 200) {
-      final searchedMovieData = json.decode(response.body);
-      // print(" body = $searchedMovieData");
-      if (searchedMovieData['total_results'] == 0) {
-        print("No movie found");
-        movieFound = false;
+        "https://movie-backend-server.onrender.com/api/search?query=$name";
+
+    try {
+      final response = await http.get(Uri.parse(searchUrl));
+      if (response.statusCode == 200) {
+        final searchedMovieData = json.decode(response.body);
+        if (searchedMovieData['total_results'] == 0) {
+          searchedMovie = [];
+          movieFound = false;
+        } else {
+          searchedMovie = searchedMovieData['results'];
+          movieFound = true;
+          lastMovieQuery = name; // ✅ Update last query
+        }
       } else {
-        searchedMovie = searchedMovieData['results'];
-        movieFound = true;
+        print("API error: ${response.statusCode}");
+        movieFound = false;
       }
+    } catch (e) {
+      print("Error during movie search: $e");
+      movieFound = false;
     }
-    // print("searched movie list = $searchedMovie and movifound = $movieFound");
-    // print(
-    //   "searched movie list status code  = ${response.statusCode} and name = $name",
-    // );
+
+    notifyListeners();
+  }
+
+  Future<void> searchedShow(String showName) async {
+    if (showName.trim() == lastTvShowQuery.trim()) {
+      print("Skipping duplicate TV show search for '$showName'");
+      tvShowFound = true;
+      notifyListeners();
+      return;
+    }
+
+    tvShowFound = null;
+    notifyListeners();
+
+    final tvshowurl =
+        'https://movie-backend-server.onrender.com/api/search/tv?query=$showName';
+
+    try {
+      final response = await http.get(Uri.parse(tvshowurl));
+      if (response.statusCode == 200) {
+        final searchedTvShowData = json.decode(response.body);
+        if (searchedTvShowData['total_results'] == 0) {
+          searchedTvShow = [];
+          tvShowFound = false;
+        } else {
+          searchedTvShow = searchedTvShowData['results'];
+          tvShowFound = true;
+          lastTvShowQuery = showName;
+          print(
+            "watch provider tv shghow = ${searchedTvShowData['results']}",
+          ); // ✅ Update last query
+        }
+      } else {
+        print("API error: ${response.statusCode}");
+        tvShowFound = false;
+      }
+    } catch (e) {
+      print("Exception during TV show search: $e");
+      tvShowFound = false;
+    }
+
     notifyListeners();
   }
 
@@ -236,16 +294,16 @@ class MovieProviderModel extends ChangeNotifier {
 
   Future<void> getTrendingPage() async {
     const trendingUrl = [
-      "https://api.themoviedb.org/3/trending/movie/day?language=en-US",
-      "https://api.themoviedb.org/3/trending/movie/day?page=2&language=en-US",
+      "https://movie-backend-server.onrender.com/api/trending",
+      "https://movie-backend-server.onrender.com/api/trending?page=2",
     ];
     for (var i = 0; i < trendingUrl.length; i++) {
       final response = await http.get(
         Uri.parse(trendingUrl[i]),
-        headers: {
-          'accept': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
+        // headers: {
+        //   'accept': 'application/json',
+        //   'Authorization': 'Bearer $authToken',
+        // },
       );
 
       if (response.statusCode == 200) {
@@ -263,14 +321,13 @@ class MovieProviderModel extends ChangeNotifier {
     try {
       onClickMovie['watchProvider'] = null;
       notifyListeners();
-      final url = "https://api.themoviedb.org/3/movie/$id/watch/providers";
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'accept': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
-      );
+      final type = onClickMovie['type'];
+      final url =
+          type == "movie"
+              ? "https://movie-backend-server.onrender.com/api/providers/$id"
+              : "https://movie-backend-server.onrender.com/api/tv/providers/$id";
+
+      final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);

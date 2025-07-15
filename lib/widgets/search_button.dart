@@ -31,6 +31,7 @@ class _SearchButtonState extends State<SearchButton> {
           cursorColor: Colors.white,
           style: GoogleFonts.nunito(color: Colors.white),
           onSubmitted: (value) {
+            movieprovider.tvShowButton = false;
             movieprovider.searchMovie(movieprovider.mycontroller.text);
             FocusScope.of(context).unfocus();
 

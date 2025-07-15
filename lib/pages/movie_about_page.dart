@@ -18,6 +18,8 @@ class _MovieAboutPageState extends State<MovieAboutPage> {
   @override
   Widget build(BuildContext context) {
     final movieprovider = Provider.of<MovieProviderModel>(context);
+    // final type = movieprovider.onClickMovie['type'];
+    const Map typeMap = {"movie": "Movie", "series": "Tv show"};
 
     return Scaffold(
       bottomNavigationBar: const WatchlistButton(),
@@ -122,10 +124,11 @@ class _MovieAboutPageState extends State<MovieAboutPage> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        (movieprovider.onClickMovie['adult_movie'] ?? false)
-                            ? "18+"
-                            : "NA",
-                        style: const TextStyle(
+                        movieprovider.onClickMovie['type'] == "movie"
+                            ? typeMap['movie']
+                            : typeMap['series'],
+
+                        style: GoogleFonts.nunito(
                           color: Color.fromARGB(255, 222, 222, 222),
                           fontSize: 12,
                         ),

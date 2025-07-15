@@ -38,20 +38,25 @@ class _TrendingPageState extends State<TrendingPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    margin: EdgeInsets.only(left: 10),
-                    child: Image.asset("assets/transparent_logo.png", height: 40),
-                  ),
-                  Expanded(
-                    child: Container(
-                      
-                      // margin: EdgeInsets.only(right: 10),
-                      child: SearchButton(),
+              Container(
+                margin: EdgeInsets.only(top: 40),
+                child: Row(
+                  children: [
+                    Container(
+                      margin: EdgeInsets.only(left: 10),
+                      child: Image.asset(
+                        "assets/transparent_logo.png",
+                        height: 40,
+                      ),
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: Container(
+                        // margin: EdgeInsets.only(top: 30),
+                        child: SearchButton(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               Expanded(
@@ -102,9 +107,12 @@ class _TrendingPageState extends State<TrendingPage> {
                                     movieprovider.onClickMovie = Map.from(
                                       movie,
                                     );
+
                                     movieprovider.convertGenre(
                                       movie['genre_ids'],
                                     );
+                                    movieprovider.onClickMovie['type'] =
+                                        'movie';
                                     movieprovider.seeDuplicacy();
                                     movieprovider.getWatchprovider(movie['id']);
                                   });
